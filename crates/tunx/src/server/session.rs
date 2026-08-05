@@ -1,10 +1,10 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 use std::sync::atomic::AtomicI64;
+use std::sync::Arc;
 
-use tunx_common::stream::WorkIo;
 use tokio::sync::{mpsc, oneshot, Mutex, RwLock};
 use tracing::{info, warn};
+use tunx_common::stream::WorkIo;
 
 use crate::server::auth::SessionTimer;
 use crate::server::ports::PortManager;
@@ -93,11 +93,7 @@ impl Session {
         Ok(rx)
     }
 
-    pub async fn deliver_work_conn(
-        &self,
-        stream_id: &str,
-        work_io: Box<dyn WorkIo>,
-    ) -> bool {
+    pub async fn deliver_work_conn(&self, stream_id: &str, work_io: Box<dyn WorkIo>) -> bool {
         if let Some(pw) = self.pending_work.lock().await.remove(stream_id) {
             pw.stream_tx.send(work_io).is_ok()
         } else {

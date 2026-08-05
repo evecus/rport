@@ -9,8 +9,8 @@ use tracing::debug;
 use tunx_common::quic::{STREAM_ID_LEN, WORK_CONN_MAGIC};
 use tunx_common::stream::{TonicStreamIo, WorkIo};
 use tunx_proto::{
-    control_service_client::ControlServiceClient, WorkConnFrame,
-    work_conn_frame::Payload as WcfPayload,
+    control_service_client::ControlServiceClient, work_conn_frame::Payload as WcfPayload,
+    WorkConnFrame,
 };
 
 const MAX_UDP_PAYLOAD: usize = 65535;

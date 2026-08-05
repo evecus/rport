@@ -1,8 +1,8 @@
 use anyhow::{Context, Result};
 use quinn::{Connection, Endpoint};
+use tracing::info;
 use tunx_common::config::ClientConfig;
 use tunx_common::quic::{client_config_skip_verify, client_config_verified};
-use tracing::info;
 
 pub async fn connect(cfg: &ClientConfig) -> Result<Connection> {
     // 解析服务端地址

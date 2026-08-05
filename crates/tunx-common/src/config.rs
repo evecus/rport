@@ -356,8 +356,8 @@ impl TunxConfig {
     pub fn from_file(path: &str) -> crate::Result<Self> {
         let s = std::fs::read_to_string(path)
             .map_err(|e| crate::TunxError::Config(format!("read {path}: {e}")))?;
-        let cfg: TunxConfig =
-            toml::from_str(&s).map_err(|e| crate::TunxError::Config(format!("parse {path}: {e}")))?;
+        let cfg: TunxConfig = toml::from_str(&s)
+            .map_err(|e| crate::TunxError::Config(format!("parse {path}: {e}")))?;
         cfg.validate()?;
         Ok(cfg)
     }
@@ -365,21 +365,15 @@ impl TunxConfig {
     fn validate(&self) -> crate::Result<()> {
         match self.mode {
             Mode::Server => {
-                let server = self
-                    .server
-                    .as_ref()
-                    .ok_or_else(|| crate::TunxError::Config(
-                        "mode=server but [server] section is missing".into()
-                    ))?;
+                let server = self.server.as_ref().ok_or_else(|| {
+                    crate::TunxError::Config("mode=server but [server] section is missing".into())
+                })?;
                 server.validate()?;
             }
             Mode::Client => {
-                let client = self
-                    .client
-                    .as_ref()
-                    .ok_or_else(|| crate::TunxError::Config(
-                        "mode=client but [client] section is missing".into()
-                    ))?;
+                let client = self.client.as_ref().ok_or_else(|| {
+                    crate::TunxError::Config("mode=client but [client] section is missing".into())
+                })?;
                 client.validate()?;
             }
         }

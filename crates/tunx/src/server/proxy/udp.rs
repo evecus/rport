@@ -3,11 +3,11 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-use tunx_common::stream::WorkIo;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::UdpSocket;
 use tokio::sync::{oneshot, Mutex};
 use tracing::{debug, error, info, warn};
+use tunx_common::stream::WorkIo;
 
 use crate::server::session::Session;
 
@@ -129,17 +129,18 @@ async fn handle_incoming_datagram(
     };
 
     // 等待客户端开好 WorkConn
-    let work_io: Box<dyn WorkIo> = match tokio::time::timeout(Duration::from_secs(10), work_rx).await {
-        Ok(Ok(io)) => io,
-        Ok(Err(_)) => {
-            warn!(proxy = %proxy_name, %peer, "work conn sender dropped");
-            return;
-        }
-        Err(_) => {
-            warn!(proxy = %proxy_name, %peer, "work conn timeout");
-            return;
-        }
-    };
+    let work_io: Box<dyn WorkIo> =
+        match tokio::time::timeout(Duration::from_secs(10), work_rx).await {
+            Ok(Ok(io)) => io,
+            Ok(Err(_)) => {
+                warn!(proxy = %proxy_name, %peer, "work conn sender dropped");
+                return;
+            }
+            Err(_) => {
+                warn!(proxy = %proxy_name, %peer, "work conn timeout");
+                return;
+            }
+        };
 
     // 建立 datagram 发送 channel
     let (tx, rx) = tokio::sync::mpsc::channel::<Vec<u8>>(256);

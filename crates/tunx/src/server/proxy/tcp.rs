@@ -5,8 +5,8 @@ use tokio::sync::oneshot;
 use tokio_rustls::TlsAcceptor;
 use tracing::{debug, error, info, warn};
 
-use tunx_common::stream::WorkIo;
 use crate::server::session::Session;
+use tunx_common::stream::WorkIo;
 
 /// 组合 AsyncRead + AsyncWrite，便于用 Box<dyn> 统一 TLS/Tcp 流
 trait Stream: AsyncRead + AsyncWrite {}
@@ -89,22 +89,18 @@ async fn handle_public_conn(
     };
 
     // 等待 client 开好 WorkConn（QUIC bi-stream 或 TCP+HTTP/2 stream，10s 超时）
-    let mut work_io: Box<dyn WorkIo> = match tokio::time::timeout(
-        std::time::Duration::from_secs(10),
-        work_rx,
-    )
-    .await
-    {
-        Ok(Ok(io)) => io,
-        Ok(Err(_)) => {
-            warn!(proxy = %proxy_name, "work conn sender dropped");
-            return;
-        }
-        Err(_) => {
-            warn!(proxy = %proxy_name, "work conn timeout");
-            return;
-        }
-    };
+    let mut work_io: Box<dyn WorkIo> =
+        match tokio::time::timeout(std::time::Duration::from_secs(10), work_rx).await {
+            Ok(Ok(io)) => io,
+            Ok(Err(_)) => {
+                warn!(proxy = %proxy_name, "work conn sender dropped");
+                return;
+            }
+            Err(_) => {
+                warn!(proxy = %proxy_name, "work conn timeout");
+                return;
+            }
+        };
 
     match tokio::io::copy_bidirectional(&mut public, &mut work_io).await {
         Ok((a, b)) => debug!(proxy = %proxy_name, sent=a, recv=b, "closed"),
@@ -146,15 +142,14 @@ async fn dispatch_tls_or_http(
         }
     } else {
         // 当作明文 HTTP 处理：读到 \r\n\r\n 或最多 8KB
-        redirect_http_to_https(proxy_name, tcp).await.map(|()| DispatchResult::Handled)
+        redirect_http_to_https(proxy_name, tcp)
+            .await
+            .map(|()| DispatchResult::Handled)
     }
 }
 
 /// 读取 HTTP 请求头，提取 Host，回 301 跳转到 https://{host}{path}
-async fn redirect_http_to_https(
-    proxy_name: &str,
-    mut tcp: TcpStream,
-) -> std::io::Result<()> {
+async fn redirect_http_to_https(proxy_name: &str, mut tcp: TcpStream) -> std::io::Result<()> {
     let mut buf = vec![0u8; 8192];
     let mut total = 0usize;
     loop {
@@ -206,7 +201,8 @@ async fn redirect_http_to_https(
     };
 
     let body = "<!DOCTYPE html><html><head><title>301 Moved Permanently</title></head>\
-         <body><h1>301 Moved Permanently</h1></body></html>\n".to_string();
+         <body><h1>301 Moved Permanently</h1></body></html>\n"
+        .to_string();
     let resp = format!(
         "HTTP/1.1 301 Moved Permanently\r\n\
          Location: {location}\r\n\

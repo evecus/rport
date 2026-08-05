@@ -14,21 +14,22 @@ use std::task::{Context, Poll};
 
 use anyhow::Result;
 use quinn::{Endpoint, RecvStream, SendStream};
-use tunx_common::quic::{STREAM_ID_LEN, WORK_CONN_MAGIC};
-use tunx_common::stream::{TonicStreamIo, WorkIo};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tokio::net::TcpListener;
 use tokio::sync::{mpsc, Mutex};
 use tonic::{transport::Server as TonicServer, Request, Response, Status, Streaming};
 use tracing::{debug, info, warn};
+use tunx_common::quic::{STREAM_ID_LEN, WORK_CONN_MAGIC};
+use tunx_common::stream::{TonicStreamIo, WorkIo};
 
 use tunx_common::config::ServerConfig;
 use tunx_proto::{
     client_message,
     control_service_server::{ControlService, ControlServiceServer},
-    server_message, ClientMessage, LoginRequest, LoginResponse, Ping, ProxyResult,
-    RegisterProxiesRequest, RegisterProxiesResponse, ServerMessage, WorkConnFrame,
+    server_message,
     work_conn_frame::Payload as WcfPayload,
+    ClientMessage, LoginRequest, LoginResponse, Ping, ProxyResult, RegisterProxiesRequest,
+    RegisterProxiesResponse, ServerMessage, WorkConnFrame,
 };
 
 use crate::server::auth;
@@ -55,11 +56,7 @@ pub struct AppState {
 
 // ─── 入口：根据 transport 模式启动 listener ──────────────────────────────────
 
-pub async fn run(
-    cfg: ServerConfig,
-    server_tls: ServerTls,
-    port_mgr: PortManager,
-) -> Result<()> {
+pub async fn run(cfg: ServerConfig, server_tls: ServerTls, port_mgr: PortManager) -> Result<()> {
     let addr: SocketAddr = cfg.bind_addr.parse()?;
     let transport = cfg.transport;
 
@@ -315,12 +312,14 @@ pub async fn run_tcp(addr: SocketAddr, state: AppState) -> Result<()> {
                     return;
                 }
             };
-            let svc = ControlServiceImpl { state: state.clone() };
+            let svc = ControlServiceImpl {
+                state: state.clone(),
+            };
             if let Err(e) = TonicServer::builder()
                 .add_service(ControlServiceServer::new(svc))
-                .serve_with_incoming(futures::stream::once(
-                    async move { Ok::<_, std::io::Error>(TlsAsAccepted(tls_stream)) },
-                ))
+                .serve_with_incoming(futures::stream::once(async move {
+                    Ok::<_, std::io::Error>(TlsAsAccepted(tls_stream))
+                }))
                 .await
             {
                 debug!(%peer, "gRPC over TCP ended: {e}");
@@ -361,7 +360,11 @@ impl AsyncWrite for TlsAsAccepted {
 impl tonic::transport::server::Connected for TlsAsAccepted {
     type ConnectInfo = SocketAddr;
     fn connect_info(&self) -> Self::ConnectInfo {
-        self.0.get_ref().0.peer_addr().unwrap_or_else(|_| "0.0.0.0:0".parse().unwrap())
+        self.0
+            .get_ref()
+            .0
+            .peer_addr()
+            .unwrap_or_else(|_| "0.0.0.0:0".parse().unwrap())
     }
 }
 
@@ -394,7 +397,12 @@ impl ControlService for ControlServiceImpl {
         let session_id = auth::generate_session_id(&cfg.token);
 
         // 3. 创建 session（30s 内必须建立 ControlStream）
-        let session = Session::new(session_id.clone(), r.client_id.clone(), 30, self.state.port_mgr.clone());
+        let session = Session::new(
+            session_id.clone(),
+            r.client_id.clone(),
+            30,
+            self.state.port_mgr.clone(),
+        );
         self.state
             .sessions
             .lock()
@@ -480,9 +488,12 @@ impl ControlService for ControlServiceImpl {
                                     });
                                     continue;
                                 }
-                                let matched = self.state.server_tls.cert_domains.iter().any(|d| {
-                                    d == &domain || wildcard_matches(d, &domain)
-                                });
+                                let matched = self
+                                    .state
+                                    .server_tls
+                                    .cert_domains
+                                    .iter()
+                                    .any(|d| d == &domain || wildcard_matches(d, &domain));
                                 if !matched {
                                     results.push(ProxyResult {
                                         name: pc.name.clone(),
@@ -509,7 +520,8 @@ impl ControlService for ControlServiceImpl {
                             Ok(p) => p,
                             Err(_) => {
                                 // 端口被占用，尝试强制释放旧 session 的端口
-                                self.force_release_port(tc.remote_port as u16, &r.session_id).await;
+                                self.force_release_port(tc.remote_port as u16, &r.session_id)
+                                    .await;
                                 match self.state.port_mgr.acquire(tc.remote_port as u16) {
                                     Ok(p) => p,
                                     Err(e) => {
@@ -579,7 +591,8 @@ impl ControlService for ControlServiceImpl {
                         let port = match self.state.port_mgr.acquire(uc.remote_port as u16) {
                             Ok(p) => p,
                             Err(_) => {
-                                self.force_release_port(uc.remote_port as u16, &r.session_id).await;
+                                self.force_release_port(uc.remote_port as u16, &r.session_id)
+                                    .await;
                                 match self.state.port_mgr.acquire(uc.remote_port as u16) {
                                     Ok(p) => p,
                                     Err(e) => {
@@ -715,7 +728,9 @@ impl ControlService for ControlServiceImpl {
         let sid = session_id.clone();
         let last_pong = Arc::new(std::sync::atomic::AtomicI64::new(unix_now()));
         // 同步到 session 的 last_pong，供端口抢占时判断 session 是否失活
-        session.last_pong.store(unix_now(), std::sync::atomic::Ordering::Relaxed);
+        session
+            .last_pong
+            .store(unix_now(), std::sync::atomic::Ordering::Relaxed);
 
         // 超时检测任务
         let timeout_secs = self.state.config.heartbeat_timeout_secs as i64;
@@ -747,7 +762,9 @@ impl ControlService for ControlServiceImpl {
                         debug!(session_id = %sid, ts = p.timestamp, "pong");
                         let now = unix_now();
                         last_pong.store(now, std::sync::atomic::Ordering::Relaxed);
-                        sess2.last_pong.store(now, std::sync::atomic::Ordering::Relaxed);
+                        sess2
+                            .last_pong
+                            .store(now, std::sync::atomic::Ordering::Relaxed);
                     }
                     Some(client_message::Payload::WorkConnAck(ack)) => {
                         debug!(session_id = %sid, stream_id = %ack.stream_id, success = ack.success, "work_conn_ack");
@@ -766,8 +783,7 @@ impl ControlService for ControlServiceImpl {
     }
 
     // ── OpenWorkConn（TCP 模式专用） ──────────────────────────────────────────
-    type OpenWorkConnStream =
-        tokio_stream::wrappers::ReceiverStream<Result<WorkConnFrame, Status>>;
+    type OpenWorkConnStream = tokio_stream::wrappers::ReceiverStream<Result<WorkConnFrame, Status>>;
 
     async fn open_work_conn(
         &self,
@@ -796,9 +812,7 @@ impl ControlService for ControlServiceImpl {
         let stream_id = match first.payload {
             Some(WcfPayload::StreamId(s)) => s,
             _ => {
-                return Err(Status::invalid_argument(
-                    "first frame must carry stream_id",
-                ));
+                return Err(Status::invalid_argument("first frame must carry stream_id"));
             }
         };
 

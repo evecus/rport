@@ -1,9 +1,9 @@
 use anyhow::{Context, Result};
 use quinn::ServerConfig as QuinnServerConfig;
-use tunx_common::config::{ServerConfig, ServerTlsConfig};
 use rustls::ServerConfig as RustlsServerConfig;
 use std::sync::Arc;
 use tracing::info;
+use tunx_common::config::{ServerConfig, ServerTlsConfig};
 
 /// 服务端 TLS 资源：QUIC 配置 + 给 HTTPS proxy 用的 cert/key
 pub struct ServerTls {
@@ -68,9 +68,14 @@ pub async fn build_server_tls(cfg: &ServerConfig) -> Result<ServerTls> {
             staging,
         } => {
             info!("TLS: requesting Let's Encrypt certificate for {domain} via Cloudflare DNS-01");
-            let (cert_der, key_der) =
-                crate::server::acme::obtain_certificate(domain, email, cache_dir, *staging, cf_api_token)
-                    .await?;
+            let (cert_der, key_der) = crate::server::acme::obtain_certificate(
+                domain,
+                email,
+                cache_dir,
+                *staging,
+                cf_api_token,
+            )
+            .await?;
             let cert_chain_der = vec![cert_der.clone()];
             let cert_domains = extract_cert_domains(&cert_der);
             let quinn_cfg = build_quinn_from_der(&cert_chain_der, &key_der, quic)?;
@@ -112,8 +117,8 @@ fn read_pem_cert_key(
     cert_path: &std::path::Path,
     key_path: &std::path::Path,
 ) -> Result<(Vec<Vec<u8>>, Vec<u8>)> {
-    let cert_pem = std::fs::read(cert_path)
-        .with_context(|| format!("read cert {:?}", cert_path))?;
+    let cert_pem =
+        std::fs::read(cert_path).with_context(|| format!("read cert {:?}", cert_path))?;
     let key_pem = std::fs::read(key_path).with_context(|| format!("read key {:?}", key_path))?;
 
     let certs: Vec<Vec<u8>> = rustls_pemfile::certs(&mut cert_pem.as_slice())

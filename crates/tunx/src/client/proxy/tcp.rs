@@ -1,15 +1,15 @@
 use anyhow::Result;
 use quinn::Connection;
-use tonic::metadata::MetadataValue;
 use tokio_stream::wrappers::ReceiverStream;
+use tonic::metadata::MetadataValue;
 use tonic::Request;
 use tracing::debug;
 
 use tunx_common::quic::{STREAM_ID_LEN, WORK_CONN_MAGIC};
 use tunx_common::stream::{TonicStreamIo, WorkIo};
 use tunx_proto::{
-    control_service_client::ControlServiceClient, WorkConnFrame,
-    work_conn_frame::Payload as WcfPayload,
+    control_service_client::ControlServiceClient, work_conn_frame::Payload as WcfPayload,
+    WorkConnFrame,
 };
 
 /// QUIC 路径：服务端发来 WorkConnRequest 后，客户端执行：

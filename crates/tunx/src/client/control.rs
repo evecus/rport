@@ -14,13 +14,13 @@ use std::task::{Context, Poll};
 use std::time::Duration;
 
 use anyhow::{Context as _, Result};
-use tunx_common::config::{ClientConfig, ClientTransport, ProxyKind};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
 use tonic::metadata::MetadataValue;
 use tonic::transport::{Endpoint, Uri};
 use tonic::Request;
 use tower::service_fn;
 use tracing::{debug, info, warn};
+use tunx_common::config::{ClientConfig, ClientTransport, ProxyKind};
 
 use tunx_proto::{
     client_message, control_service_client::ControlServiceClient, server_message, ClientMessage,
@@ -167,9 +167,7 @@ async fn run_session_tcp(cfg: &ClientConfig, client_id: &str) -> Result<()> {
             .with_no_client_auth()
     } else {
         let mut root_store = rustls::RootCertStore::empty();
-        for cert in rustls_native_certs::load_native_certs()
-            .with_context(|| "load native certs")?
-        {
+        for cert in rustls_native_certs::load_native_certs().with_context(|| "load native certs")? {
             root_store.add(&rustls::Certificate(cert.0)).ok();
         }
         rustls::ClientConfig::builder()
@@ -255,12 +253,20 @@ async fn run_session_tcp_inner(
                     tokio::spawn(async move {
                         let result = if is_udp {
                             udp::handle_work_conn_tcp(
-                                grpc2, sid_meta, proxy_name.clone(), local, stream_id,
+                                grpc2,
+                                sid_meta,
+                                proxy_name.clone(),
+                                local,
+                                stream_id,
                             )
                             .await
                         } else {
                             tcp::handle_work_conn_tcp(
-                                grpc2, sid_meta, proxy_name.clone(), local, stream_id,
+                                grpc2,
+                                sid_meta,
+                                proxy_name.clone(),
+                                local,
+                                stream_id,
                             )
                             .await
                         };

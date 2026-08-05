@@ -33,10 +33,7 @@ pub struct TonicStreamIo {
 }
 
 impl TonicStreamIo {
-    pub fn new(
-        in_rx: mpsc::Receiver<bytes::Bytes>,
-        out_tx: mpsc::Sender<bytes::Bytes>,
-    ) -> Self {
+    pub fn new(in_rx: mpsc::Receiver<bytes::Bytes>, out_tx: mpsc::Sender<bytes::Bytes>) -> Self {
         Self {
             in_rx,
             cur: bytes::Bytes::new(),

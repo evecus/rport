@@ -8,7 +8,7 @@ use std::net::SocketAddr;
 
 use anyhow::Result;
 
-use crate::server::control::{AppState, run_tcp};
+use crate::server::control::{run_tcp, AppState};
 
 pub async fn run_xhttp(addr: SocketAddr, state: AppState) -> Result<()> {
     // XHTTP 复用 TCP 路径：TLS + HTTP/2 + gRPC

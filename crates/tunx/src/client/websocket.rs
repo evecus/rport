@@ -12,9 +12,9 @@ use std::time::Duration;
 use anyhow::{Context as _, Result};
 use futures::{Sink, Stream};
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use tokio_tungstenite::tungstenite::{client::IntoClientRequest, Message};
 use tokio_tungstenite::WebSocketStream;
 use tracing::info;
-use tokio_tungstenite::tungstenite::{client::IntoClientRequest, Message};
 
 use tonic::transport::{Endpoint, Uri};
 use tower::service_fn;
@@ -169,9 +169,7 @@ pub async fn connect(cfg: &ClientConfig) -> Result<tonic::transport::Channel> {
             .with_no_client_auth()
     } else {
         let mut root_store = rustls::RootCertStore::empty();
-        for cert in rustls_native_certs::load_native_certs()
-            .with_context(|| "load native certs")?
-        {
+        for cert in rustls_native_certs::load_native_certs().with_context(|| "load native certs")? {
             root_store.add(&rustls::Certificate(cert.0)).ok();
         }
         rustls::ClientConfig::builder()

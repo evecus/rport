@@ -9,8 +9,8 @@ mod websocket;
 mod xhttp;
 
 use anyhow::Result;
-use tunx_common::config::ServerConfig;
 use tracing::info;
+use tunx_common::config::ServerConfig;
 
 pub async fn run(cfg: ServerConfig) -> Result<()> {
     info!("tunx server starting, bind={}", cfg.bind_addr);

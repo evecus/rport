@@ -23,8 +23,16 @@ async fn main() -> Result<()> {
 
     // 初始化日志
     let log_level = match &cfg.mode {
-        Mode::Server => cfg.server.as_ref().map(|s| s.log_level.as_str()).unwrap_or("info"),
-        Mode::Client => cfg.client.as_ref().map(|c| c.log_level.as_str()).unwrap_or("info"),
+        Mode::Server => cfg
+            .server
+            .as_ref()
+            .map(|s| s.log_level.as_str())
+            .unwrap_or("info"),
+        Mode::Client => cfg
+            .client
+            .as_ref()
+            .map(|c| c.log_level.as_str())
+            .unwrap_or("info"),
     };
     tracing_subscriber::fmt()
         .with_env_filter(
@@ -35,12 +43,14 @@ async fn main() -> Result<()> {
 
     match cfg.mode {
         Mode::Server => {
-            let server_cfg = cfg.server
+            let server_cfg = cfg
+                .server
                 .ok_or_else(|| anyhow::anyhow!("mode=server but [server] section is missing"))?;
             server::run(server_cfg).await
         }
         Mode::Client => {
-            let client_cfg = cfg.client
+            let client_cfg = cfg
+                .client
                 .ok_or_else(|| anyhow::anyhow!("mode=client but [client] section is missing"))?;
             client::run(client_cfg).await
         }
