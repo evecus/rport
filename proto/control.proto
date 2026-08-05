@@ -1,0 +1,147 @@
+syntax = "proto3";
+
+package tunx.control.v1;
+
+option optimize_for = SPEED;
+
+// ─── 登录 ────────────────────────────────────────────────────────────────────
+
+service ControlService {
+  // 第一步：客户端握手登录，拿到 session_id
+  rpc Login(LoginRequest) returns (LoginResponse);
+
+  // 第二步：注册本次会话要暴露的代理
+  rpc RegisterProxies(RegisterProxiesRequest) returns (RegisterProxiesResponse);
+
+  // 第三步：长连接控制流
+  //   client → server: 心跳 pong / WorkConn 就绪通知
+  //   server → client: ping / WorkConn 请求
+  rpc ControlStream(stream ClientMessage) returns (stream ServerMessage);
+
+  // TCP 模式专用：双向字节流承载 WorkConn
+  //   client → server 首帧: WorkConnFrame{ stream_id }
+  //   之后双向: WorkConnFrame{ data }
+  rpc OpenWorkConn(stream WorkConnFrame) returns (stream WorkConnFrame);
+}
+
+// ─── Login ───────────────────────────────────────────────────────────────────
+
+message LoginRequest {
+  string token       = 1; // 认证 token（可空，服务端配置决定是否校验）
+  string client_id   = 2; // 客户端自己生成的 UUID，重连时保持一致
+  string version     = 3; // 客户端版本号，供服务端兼容性判断
+}
+
+message LoginResponse {
+  string session_id  = 1; // 服务端分配的会话 ID
+  string server_version = 2;
+  Error  error       = 3; // 非空表示登录失败
+}
+
+// ─── RegisterProxies ─────────────────────────────────────────────────────────
+
+message RegisterProxiesRequest {
+  string session_id    = 1;
+  repeated ProxyConfig proxies = 2;
+}
+
+message RegisterProxiesResponse {
+  repeated ProxyResult results = 1;
+}
+
+message ProxyConfig {
+  string name        = 1; // 代理名称，同一 session 内唯一
+  ProxyType type     = 2;
+
+  // TCP 专用
+  TcpConfig tcp      = 3;
+  // UDP 专用
+  UdpConfig udp      = 4;
+}
+
+enum ProxyType {
+  PROXY_TYPE_UNSPECIFIED = 0;
+  PROXY_TYPE_TCP         = 1;
+  PROXY_TYPE_UDP         = 2;
+}
+
+message TcpConfig {
+  // 服务端监听端口，0 表示由服务端随机分配
+  uint32 remote_port = 1;
+  // 本地服务地址（客户端侧），如 "127.0.0.1:8080"
+  string local_addr  = 2;
+  // 是否启用服务端 TLS 终止：true 时该端口只能 https 访问
+  // 明文 HTTP 请求会被 301 跳转到 https
+  bool   tls         = 3;
+  // tls=true 时必填，访问该端口使用的域名
+  // 必须与服务端证书覆盖的域名（SAN）匹配
+  string custom_domain = 4;
+}
+
+message UdpConfig {
+  // 服务端监听端口，0 表示由服务端随机分配
+  uint32 remote_port = 1;
+  // 本地服务地址（客户端侧），如 "127.0.0.1:53"
+  string local_addr  = 2;
+}
+
+message ProxyResult {
+  string name         = 1;
+  bool   success      = 2;
+  uint32 remote_port  = 3; // 实际分配的端口
+  Error  error        = 4;
+}
+
+// ─── ControlStream ───────────────────────────────────────────────────────────
+
+message ClientMessage {
+  oneof payload {
+    Pong         pong          = 1;
+    WorkConnAck  work_conn_ack = 2; // 告知 server: stream 已就绪
+  }
+}
+
+message ServerMessage {
+  oneof payload {
+    Ping            ping          = 1;
+    WorkConnRequest work_conn_req = 2;
+    ProxyShutdown   proxy_shutdown = 3; // server 主动关闭某个代理
+  }
+}
+
+message Ping { int64 timestamp = 1; }
+message Pong { int64 timestamp = 1; }
+
+// server 要求 client 开一条新的 QUIC stream 来承载工作连接
+message WorkConnRequest {
+  string proxy_name = 1;
+  string stream_id  = 2; // 用于关联：client 开 stream 时在头部写入此 id
+}
+
+// client 确认已开好 stream
+message WorkConnAck {
+  string stream_id = 1;
+  bool   success   = 2;
+}
+
+// TCP 模式下 WorkConn 的双向 frame
+message WorkConnFrame {
+  oneof payload {
+    // 首帧：声明本 stream 归属（与 ControlStream 上 WorkConnRequest 中的 stream_id 对应）
+    string stream_id = 1;
+    // 后续帧：纯数据
+    bytes  data      = 2;
+  }
+}
+
+message ProxyShutdown {
+  string proxy_name = 1;
+  string reason     = 2;
+}
+
+// ─── 公共 ─────────────────────────────────────────────────────────────────────
+
+message Error {
+  uint32 code    = 1;
+  string message = 2;
+}

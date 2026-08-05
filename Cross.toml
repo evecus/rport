@@ -1,0 +1,8 @@
+# cross 交叉编译配置
+# 在容器内构建前安装 protoc（tunx-proto build.rs 需要）
+
+[build]
+pre-build = [
+    "apt-get update -q",
+    "apt-get install -y protobuf-compiler",
+]

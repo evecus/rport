@@ -1,0 +1,50 @@
+[package]
+name = "tunx"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "tunx"
+path = "src/main.rs"
+
+[dependencies]
+x509-parser = "0.16"
+tunx-proto          = { path = "../tunx-proto" }
+tunx-common         = { path = "../tunx-common" }
+tonic               = { workspace = true }
+prost               = { workspace = true }
+quinn               = { workspace = true }
+rustls              = { workspace = true }
+tokio-rustls        = "0.24"
+rustls-pemfile      = { workspace = true }
+rustls-native-certs = { workspace = true }
+rcgen               = { workspace = true }
+tokio               = { workspace = true }
+tokio-stream        = { workspace = true }
+ring                = { workspace = true }
+uuid                = { workspace = true }
+anyhow              = { workspace = true }
+thiserror           = { workspace = true }
+tracing             = { workspace = true }
+tracing-subscriber  = { workspace = true }
+serde               = { workspace = true }
+toml                = { workspace = true }
+clap                = { workspace = true }
+dashmap             = { workspace = true }
+base64              = { workspace = true }
+async-stream        = { workspace = true }
+futures             = { workspace = true }
+tower               = { workspace = true }
+hyper               = { workspace = true }
+serde_json          = { workspace = true }
+bytes               = { workspace = true }
+tokio-tungstenite   = { workspace = true }
+
+# ── Rust 1.75 兼容 pin ─────────────────────────────
+rand      = "=0.8.5"
+getrandom = "=0.2.15"
+hashbrown = "=0.14.5"
+indexmap  = "=2.2.6"
+time      = "=0.3.35"
+idna_adapter = { workspace = true }
+hyper-rustls = { version = "0.24", features = ["native-tokio"] }
