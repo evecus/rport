@@ -1,0 +1,138 @@
+# tunx 配置文件
+#
+# 运行模式：server 或 client
+# 根据实际需求修改此行，然后填写对应 section 的参数
+mode = "server"
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 服务端配置（mode = "server" 时生效）
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[server]
+
+# 监听地址
+# - transport = "quic" / "both" 时此端口走 UDP（QUIC）
+# - transport = "tcp" 时此端口走 TCP（TLS+HTTP/2）
+# - transport = "both" 时 UDP 与 TCP 同时监听同一端口（互不冲突）
+bind_addr = "0.0.0.0:7000"
+
+# 传输模式：quic / tcp / both，默认 quic
+# - quic：仅 UDP/QUIC
+# - tcp ：仅 TCP+TLS+HTTP/2，要求 TLS 为 acme/manual
+# - both：同时监听 UDP 与 TCP
+transport = "quic"
+
+# 允许客户端使用的公网端口范围
+proxy_port_range = [10000, 20000]
+
+# 认证 token（客户端必须携带相同 token，留空不校验）
+token = "your-secret-token"
+
+# 心跳超时（秒），超时断开客户端
+heartbeat_timeout_secs = 90
+
+# 日志等级：error / warn / info / debug / trace
+# 也支持细粒度：tunx=debug,quinn=warn
+log_level = "info"
+
+# QUIC 传输层调优（仅 transport=quic/both 生效）
+[server.quic]
+congestion = "new_reno"
+initial_mtu = 1200
+recv_window = 8388608
+
+# TLS 证书配置（必填）
+# 三种模式，选择一种即可，另外两种注释掉
+# ---------- 模式一：Let's Encrypt 自动申请 ----------
+[server.tls]
+mode = "acme"
+domain = "tunx.example.com"
+email = "admin@example.com"
+cf_api_token = "your-cloudflare-api-token"
+cache_dir = "./acme-cache"
+staging = false   # 测试时设为 true
+
+# ---------- 模式二：手动证书 ----------
+# [server.tls]
+# mode = "manual"
+# cert_file = "/etc/tunx/cert.pem"
+# key_file = "/etc/tunx/key.pem"
+
+# ---------- 模式三：自签名（仅 transport=quic）----------
+# [server.tls]
+# mode = "self_signed"
+# sni = "www.bing.com"
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# 客户端配置（mode = "client" 时生效）
+# 使用客户端时，将 mode 改为 "client" 并填写以下参数
+# ═══════════════════════════════════════════════════════════════════════════════
+
+# [client]
+
+# 服务端地址（IP:端口 或 域名:端口）
+# server_addr = "tunx.example.com:7000"
+
+# 传输模式：quic / tcp，默认 quic
+# transport = "quic"
+
+# 认证 token（与服务端一致）
+# token = "your-secret-token"
+
+# 是否跳过 TLS 证书校验（自签名证书时设为 true）
+# tls_skip_verify = false
+
+# TLS SNI 域名（可选，不填则从 server_addr 提取）
+# tls_sni = "tunx.example.com"
+
+# 心跳间隔（秒）
+# heartbeat_interval_secs = 30
+
+# 断线重连最大间隔（秒，指数退避）
+# reconnect_max_secs = 60
+
+# 日志等级
+# log_level = "info"
+
+# QUIC 传输层调优
+# [client.quic]
+# congestion = "new_reno"
+# initial_mtu = 1200
+# recv_window = 8388608
+
+# 代理列表：每个 [[client.proxies]] 定义一条穿透规则
+# type 可选 tcp / udp，remote_port=0 则随机分配
+# [[client.proxies]]
+# name = "ssh"
+# type = "tcp"
+# local_addr = "127.0.0.1:22"
+# remote_port = 10022
+
+# [[client.proxies]]
+# name = "web"
+# type = "tcp"
+# local_addr = "127.0.0.1:8080"
+# remote_port = 0
+
+# [[client.proxies]]
+# name = "postgres"
+# type = "tcp"
+# local_addr = "127.0.0.1:5432"
+# remote_port = 15432
+
+# TCP 代理特例：启用服务端 TLS 终止（仅服务端有正规 CA 证书时可用）
+# [[client.proxies]]
+# name = "https"
+# type = "tcp"
+# local_addr = "127.0.0.1:443"
+# remote_port = 10443
+# tls = true
+# custom_domain = "web.example.com"
+
+# UDP 代理示例（DNS）
+# [[client.proxies]]
+# name = "dns"
+# type = "udp"
+# local_addr = "127.0.0.1:53"
+# remote_port = 10053
