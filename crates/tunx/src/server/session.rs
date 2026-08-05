@@ -12,6 +12,7 @@ use crate::server::proxy::ProxyHandle;
 use tunx_proto::{server_message, ServerMessage, WorkConnRequest};
 
 pub struct Session {
+    #[allow(dead_code)]
     pub session_id: String,
     #[allow(dead_code)]
     pub client_id: String,
