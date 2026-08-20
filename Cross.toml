@@ -1,0 +1,13 @@
+# cross 交叉编译配置
+# 在容器内构建前安装 protoc（tunx-proto build.rs 需要）
+# 以及 Node.js + npm（tunx build.rs 需要，用于构建内嵌的 web-ui 前端；
+# 若宿主机已经跑过 `npm run build` 生成了 web-ui/dist，这一步会被 tunx/build.rs
+# 检测到并跳过，不会重复构建）
+
+[build]
+pre-build = [
+    "apt-get update -q",
+    "apt-get install -y protobuf-compiler curl",
+    "curl -fsSL https://deb.nodesource.com/setup_20.x | bash -",
+    "apt-get install -y nodejs",
+]

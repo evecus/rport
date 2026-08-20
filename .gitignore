@@ -1,0 +1,10 @@
+/target
+Cargo.lock.bak
+
+# 前端构建产物与依赖（构建产物由 build.rs / CI 生成，不提交）
+/web-ui/node_modules
+/web-ui/dist
+
+# 运行时生成的证书/ACME 缓存等
+*.pem
+acme-cache/
